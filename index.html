@@ -1,0 +1,1117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f3ea">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Workout Log">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.json">
+  <title>June Hypertrophy Log</title>
+  <style>
+    :root {
+      --bg: #f7f3ea;
+      --ink: #171a1f;
+      --muted: #667085;
+      --line: #d8d0c2;
+      --panel: #fffdf8;
+      --panel-2: #edf4f2;
+      --accent: #236c63;
+      --accent-2: #b4532a;
+      --danger: #ad2f35;
+      --shadow: 0 16px 40px rgba(23, 26, 31, .10);
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, rgba(35, 108, 99, .10), transparent 280px),
+        var(--bg);
+      color: var(--ink);
+    }
+
+    button, input, textarea, select {
+      font: inherit;
+      color: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .app {
+      width: min(920px, 100%);
+      margin: 0 auto;
+      padding: env(safe-area-inset-top) 14px calc(84px + env(safe-area-inset-bottom));
+    }
+
+    header {
+      padding: 18px 2px 10px;
+    }
+
+    .kicker {
+      margin: 0 0 6px;
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 9vw, 44px);
+      line-height: .98;
+      letter-spacing: 0;
+    }
+
+    .subhead {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.4;
+    }
+
+    .today-strip {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .status {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .status-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .status-label {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .status h2 {
+      margin: 4px 0 0;
+      font-size: 26px;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #e2ece8;
+      color: #174d47;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      min-height: 42px;
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #ece6da;
+      color: var(--ink);
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn.warn {
+      background: #f2dfd5;
+      color: #79371f;
+    }
+
+    .btn.ghost {
+      background: transparent;
+      border: 1px solid var(--line);
+    }
+
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      padding: 8px 0;
+      background: rgba(247, 243, 234, .94);
+      backdrop-filter: blur(12px);
+    }
+
+    .tab {
+      min-height: 40px;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 850;
+      font-size: 13px;
+    }
+
+    .tab.active {
+      background: var(--ink);
+      color: white;
+    }
+
+    main { display: grid; gap: 12px; }
+
+    section[hidden] { display: none; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 10px 28px rgba(23, 26, 31, .06);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .exercise {
+      display: grid;
+      gap: 10px;
+      padding: 13px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .exercise:first-child { border-top: 0; padding-top: 0; }
+
+    .exercise-head {
+      display: grid;
+      gap: 7px;
+    }
+
+    .exercise-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .exercise-name {
+      font-weight: 900;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+
+    .target {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
+    .select-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    select, input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffaf1;
+      min-height: 42px;
+      padding: 10px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+      line-height: 1.35;
+    }
+
+    .last {
+      background: var(--panel-2);
+      border: 1px solid #ccddd8;
+      border-radius: 8px;
+      padding: 10px;
+      color: #234b46;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .sets {
+      display: grid;
+      gap: 8px;
+    }
+
+    .set-row {
+      display: grid;
+      grid-template-columns: 34px 1fr 1fr;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .set-num {
+      width: 34px;
+      height: 38px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #eee8dc;
+      color: var(--muted);
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    .set-row input {
+      text-align: center;
+      min-height: 38px;
+      padding: 7px;
+    }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .schedule {
+      display: grid;
+      gap: 8px;
+    }
+
+    .day-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fffaf1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .day-card.active {
+      border-color: var(--accent);
+      background: #eaf3ef;
+    }
+
+    .day-card.done .day-name {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    .day-name {
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 3px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .metric {
+      border-radius: 8px;
+      padding: 12px;
+      background: #fffaf1;
+      border: 1px solid var(--line);
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 950;
+      line-height: 1.05;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .history-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px;
+      background: #fffaf1;
+    }
+
+    .history-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-weight: 900;
+    }
+
+    .progress-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .progress-table th,
+    .progress-table td {
+      padding: 9px 6px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .progress-table th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 18px 4px;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .footer-note {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .toast {
+      position: fixed;
+      left: 14px;
+      right: 14px;
+      bottom: calc(18px + env(safe-area-inset-bottom));
+      z-index: 20;
+      background: var(--ink);
+      color: white;
+      padding: 13px 14px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(16px);
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+      font-weight: 750;
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    dialog {
+      width: min(520px, calc(100% - 28px));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0;
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: var(--shadow);
+    }
+
+    dialog::backdrop {
+      background: rgba(23, 26, 31, .38);
+    }
+
+    .dialog-body {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .dialog-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    @media (min-width: 720px) {
+      .app { padding-left: 22px; padding-right: 22px; }
+      .today-strip { grid-template-columns: 1fr .7fr; align-items: stretch; }
+      .select-row { grid-template-columns: 1fr auto; align-items: center; }
+      .schedule { grid-template-columns: repeat(7, 1fr); }
+      .day-card { display: block; min-height: 112px; }
+      .metric-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <p class="kicker">June 2026 hypertrophy block</p>
+      <h1>Workout Log</h1>
+      <p class="subhead">Track load, reps, bodyweight, and progress across the rotating lower/upper split.</p>
+    </header>
+
+    <div class="today-strip">
+      <div class="status">
+        <div class="status-top">
+          <div>
+            <p class="status-label">Today</p>
+            <h2 id="todayName">Lower A</h2>
+          </div>
+          <span class="pill" id="cyclePill">Day 1</span>
+        </div>
+        <p class="subhead" id="todayHint">Heavy bilateral day. Prioritize clean progression.</p>
+        <div class="actions">
+          <button class="btn ghost" id="prevDay" aria-label="Previous workout day">←</button>
+          <button class="btn primary" id="completeDay">Finish</button>
+          <button class="btn ghost" id="nextDay" aria-label="Next workout day">→</button>
+        </div>
+      </div>
+
+      <div class="status">
+        <p class="status-label">Weekly weigh-in</p>
+        <div class="quick-grid">
+          <input id="bodyweightInput" type="number" inputmode="decimal" placeholder="lb" min="0" step="0.1" aria-label="Bodyweight in pounds">
+          <button class="btn primary" id="saveBodyweight">Save</button>
+        </div>
+        <p class="footer-note" id="bodyweightNote">Target: slow upward drift, roughly 0.5 lb/week.</p>
+      </div>
+    </div>
+
+    <nav class="tabs" aria-label="App sections">
+      <button class="tab active" data-tab="log">Log</button>
+      <button class="tab" data-tab="plan">Plan</button>
+      <button class="tab" data-tab="progress">Progress</button>
+      <button class="tab" data-tab="data">Data</button>
+    </nav>
+
+    <main>
+      <section id="log" class="view">
+        <div class="panel">
+          <div class="section-title">
+            <div>
+              <h3 id="logTitle">Lower A</h3>
+              <div class="small" id="logSubtitle">Log today's working sets.</div>
+            </div>
+            <span class="pill" id="sessionState">Open</span>
+          </div>
+          <div id="exerciseList"></div>
+          <label class="small" for="sessionNotes">Session notes</label>
+          <textarea id="sessionNotes" placeholder="Energy, sleep, pain, travel setup, equipment changes..."></textarea>
+          <button class="btn primary" id="saveSession" style="width:100%; margin-top:10px;">Save Workout</button>
+        </div>
+      </section>
+
+      <section id="plan" class="view" hidden>
+        <div class="panel">
+          <div class="section-title">
+            <div>
+              <h3>Current Cycle</h3>
+              <div class="small">Move forward or backward whenever travel shifts the rhythm.</div>
+            </div>
+          </div>
+          <div class="schedule" id="schedule"></div>
+        </div>
+        <div class="panel">
+          <h3>Training Notes</h3>
+          <p class="subhead">Your block calls for most sets to stop just shy of failure, with true failure mainly on the last set of isolation work. Keep the log fast: weight, reps, and any useful notes.</p>
+        </div>
+      </section>
+
+      <section id="progress" class="view" hidden>
+        <div class="panel">
+          <div class="section-title">
+            <div>
+              <h3>Progress</h3>
+              <div class="small">Best sets and total volume from saved workouts.</div>
+            </div>
+          </div>
+          <div class="metric-grid" id="metrics"></div>
+        </div>
+        <div class="panel">
+          <h3>Exercise Trends</h3>
+          <div id="progressTableWrap"></div>
+        </div>
+        <div class="panel">
+          <h3>Recent Workouts</h3>
+          <div class="history-list" id="historyList"></div>
+        </div>
+      </section>
+
+      <section id="data" class="view" hidden>
+        <div class="panel">
+          <h3>Export</h3>
+          <p class="subhead">Use CSV for quick analysis and JSON for full backup or moving to another browser.</p>
+          <div class="quick-grid">
+            <button class="btn primary" id="exportCsv">CSV</button>
+            <button class="btn primary" id="exportJson">JSON</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Import</h3>
+          <p class="subhead">Import a JSON backup created by this app. Existing data is replaced after confirmation.</p>
+          <button class="btn" id="importJson">Import JSON</button>
+          <input class="file-input" id="importFile" type="file" accept="application/json,.json">
+        </div>
+        <div class="panel">
+          <h3>Storage</h3>
+          <p class="subhead">Data is saved in this browser on this device.</p>
+          <button class="btn warn" id="resetData">Reset All Data</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="confirmDialog">
+    <div class="dialog-body">
+      <h3 id="confirmTitle">Confirm</h3>
+      <p class="subhead" id="confirmText"></p>
+      <div class="dialog-actions">
+        <button class="btn ghost" id="cancelConfirm">Cancel</button>
+        <button class="btn warn" id="acceptConfirm">Confirm</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const STORE_KEY = "jm-hypertrophy-log-v1";
+    const todayIso = () => new Date().toISOString().slice(0, 10);
+    const fmtDate = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+    const program = [
+      {
+        name: "Lower A",
+        hint: "Heavy bilateral day. Prioritize clean progression.",
+        exercises: [
+          { id: "sandbag-shoulder", names: ["Sandbag to shoulder"], sets: 4, reps: "5 /side", note: "Explosive intent, not to failure." },
+          { id: "trap-bar-deadlift", names: ["Trap bar deadlift"], sets: 4, reps: "6-8", note: "Primary driver." },
+          { id: "bulgarian-split-squat", names: ["Bulgarian split squat"], sets: 3, reps: "8-10 /leg", note: "Sandbag or DB load." },
+          { id: "sandbag-squat-goodmorning", names: ["Sandbag squat", "Sandbag good morning"], sets: 3, reps: "10-12", note: "" },
+          { id: "standing-calf-raise", names: ["Standing calf raise"], sets: 3, reps: "12-15", note: "Loaded." }
+        ]
+      },
+      {
+        name: "Upper A",
+        hint: "Push emphasis with weighted calisthenics.",
+        exercises: [
+          { id: "weighted-dips-a", names: ["Weighted dips"], sets: 4, reps: "6-10", note: "Add belt weight." },
+          { id: "weighted-neutral-pullups", names: ["Weighted neutral-grip pullups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
+          { id: "pushups-db-press", names: ["Decline pushups w/ parallettes", "DB press"], sets: 3, reps: "near failure", note: "Superset with lateral raises if desired." },
+          { id: "db-lateral-raise", names: ["DB lateral raise"], sets: 3, reps: "12-15", note: "" },
+          { id: "db-curl", names: ["DB curl"], sets: 3, reps: "10-12", note: "Optional." }
+        ]
+      },
+      { name: "Rest", hint: "Daily 2.25-mile unweighted walk only.", exercises: [] },
+      {
+        name: "Lower B",
+        hint: "Unilateral and posterior emphasis.",
+        exercises: [
+          { id: "rdl", names: ["Trap bar RDL", "DB RDL"], sets: 4, reps: "8-10", note: "Hinge, hamstring focus." },
+          { id: "lunge-stepup", names: ["Reverse lunge", "Sandbag step-up"], sets: 3, reps: "10 /leg", note: "" },
+          { id: "sandbag-squat", names: ["Sandbag squat"], sets: 3, reps: "12-15", note: "Higher-rep quad work." },
+          { id: "calf-raise", names: ["Calf raise"], sets: 3, reps: "15-20", note: "" }
+        ]
+      },
+      {
+        name: "Upper B",
+        hint: "Pull emphasis with lighter dips.",
+        exercises: [
+          { id: "weighted-pullups", names: ["Weighted pullups"], sets: 4, reps: "6-10", note: "" },
+          { id: "row", names: ["DB row", "Sandbag row"], sets: 4, reps: "8-12", note: "Sandbag rows may need higher reps." },
+          { id: "weighted-dips-b", names: ["Weighted dips"], sets: 3, reps: "8-12", note: "Lighter than Upper A." },
+          { id: "db-overhead-press", names: ["DB overhead press"], sets: 3, reps: "8-12", note: "" },
+          { id: "rear-delt", names: ["Rear delt raise", "Face pull"], sets: 3, reps: "15-20", note: "Superset with OHP if desired." }
+        ]
+      },
+      { name: "Rest", hint: "Daily 2.25-mile unweighted walk only.", exercises: [] },
+      { name: "Rest", hint: "Daily 2.25-mile unweighted walk only.", exercises: [] }
+    ];
+
+    const defaultState = {
+      cycleIndex: 0,
+      anchorDate: "2026-06-08",
+      sessions: [],
+      drafts: {},
+      bodyweights: []
+    };
+
+    let state = loadState();
+
+    function loadState() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORE_KEY));
+        return { ...defaultState, ...parsed };
+      } catch {
+        return { ...defaultState };
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    }
+
+    function activeDay() {
+      return program[state.cycleIndex];
+    }
+
+    function activeDraftKey() {
+      return `${todayIso()}-${state.cycleIndex}`;
+    }
+
+    function getDraft() {
+      const key = activeDraftKey();
+      if (!state.drafts[key]) {
+        state.drafts[key] = makeDraft();
+      }
+      return state.drafts[key];
+    }
+
+    function makeDraft() {
+      return {
+        date: todayIso(),
+        cycleIndex: state.cycleIndex,
+        notes: "",
+        exercises: activeDay().exercises.map(ex => ({
+          id: ex.id,
+          name: ex.names[0],
+          sets: Array.from({ length: ex.sets }, () => ({ weight: "", reps: "" }))
+        }))
+      };
+    }
+
+    function setCycle(index) {
+      state.cycleIndex = (index + program.length) % program.length;
+      saveState();
+      render();
+    }
+
+    function lastComparable(exerciseName) {
+      const rows = [];
+      [...state.sessions].reverse().some(session => {
+        for (const ex of session.exercises || []) {
+          if (ex.name === exerciseName) {
+            rows.push({ session, ex });
+            return true;
+          }
+        }
+        return false;
+      });
+      return rows[0] || null;
+    }
+
+    function bestSet(sets) {
+      const parsed = sets
+        .map(s => ({ weight: Number(s.weight), reps: Number(s.reps) }))
+        .filter(s => Number.isFinite(s.weight) && Number.isFinite(s.reps) && s.reps > 0);
+      parsed.sort((a, b) => (b.weight * b.reps) - (a.weight * a.reps));
+      return parsed[0];
+    }
+
+    function setSummary(sets) {
+      return sets
+        .filter(s => s.weight || s.reps)
+        .map((s, i) => `S${i + 1}: ${s.weight || 0} x ${s.reps || 0}`)
+        .join(", ");
+    }
+
+    function render() {
+      const day = activeDay();
+      document.getElementById("todayName").textContent = day.name;
+      document.getElementById("cyclePill").textContent = `Day ${state.cycleIndex + 1}`;
+      document.getElementById("todayHint").textContent = day.hint;
+      document.getElementById("logTitle").textContent = day.name;
+      document.getElementById("logSubtitle").textContent = day.exercises.length ? "Log today's working sets." : "Rest day. Walk, recover, and keep the rhythm flexible.";
+      document.getElementById("sessionState").textContent = day.exercises.length ? "Open" : "Rest";
+      renderLog();
+      renderSchedule();
+      renderProgress();
+      renderBodyweightNote();
+    }
+
+    function renderLog() {
+      const wrap = document.getElementById("exerciseList");
+      const day = activeDay();
+      if (!day.exercises.length) {
+        wrap.innerHTML = `<div class="empty">No lifting today. Use Finish to advance when this rest day is complete.</div>`;
+        document.getElementById("sessionNotes").value = "";
+        return;
+      }
+
+      const draft = getDraft();
+      wrap.innerHTML = day.exercises.map((ex, exIndex) => {
+        const draftEx = draft.exercises.find(item => item.id === ex.id) || { name: ex.names[0], sets: [] };
+        const last = lastComparable(draftEx.name);
+        const lastText = last ? `${fmtDate(last.session.date)}: ${setSummary(last.ex.sets) || "saved with no sets"}` : "No prior entry for this movement yet.";
+        const options = ex.names.map(name => `<option value="${escapeHtml(name)}"${name === draftEx.name ? " selected" : ""}>${escapeHtml(name)}</option>`).join("");
+        const setRows = Array.from({ length: ex.sets }, (_, setIndex) => {
+          const s = draftEx.sets[setIndex] || { weight: "", reps: "" };
+          return `
+            <div class="set-row">
+              <span class="set-num">${setIndex + 1}</span>
+              <input data-ex="${exIndex}" data-set="${setIndex}" data-field="weight" type="number" inputmode="decimal" step="0.5" placeholder="lb" value="${escapeHtml(s.weight)}" aria-label="${escapeHtml(draftEx.name)} set ${setIndex + 1} weight">
+              <input data-ex="${exIndex}" data-set="${setIndex}" data-field="reps" type="number" inputmode="numeric" step="1" placeholder="reps" value="${escapeHtml(s.reps)}" aria-label="${escapeHtml(draftEx.name)} set ${setIndex + 1} reps">
+            </div>`;
+        }).join("");
+        return `
+          <article class="exercise">
+            <div class="exercise-head">
+              <div class="exercise-title">
+                <div>
+                  <div class="exercise-name">${escapeHtml(draftEx.name)}</div>
+                  <div class="target">${ex.sets} sets · ${escapeHtml(ex.reps)}${ex.note ? ` · ${escapeHtml(ex.note)}` : ""}</div>
+                </div>
+              </div>
+              ${ex.names.length > 1 ? `<div class="select-row"><select data-ex-select="${exIndex}" aria-label="Exercise option">${options}</select></div>` : ""}
+              <div class="last"><strong>Last comparable:</strong> ${escapeHtml(lastText)}</div>
+            </div>
+            <div class="sets">${setRows}</div>
+          </article>`;
+      }).join("");
+
+      document.getElementById("sessionNotes").value = draft.notes || "";
+      bindLogInputs();
+    }
+
+    function bindLogInputs() {
+      document.querySelectorAll("[data-ex-select]").forEach(select => {
+        select.addEventListener("change", e => {
+          const exIndex = Number(e.target.dataset.exSelect);
+          getDraft().exercises[exIndex].name = e.target.value;
+          saveState();
+          renderLog();
+        });
+      });
+
+      document.querySelectorAll("[data-field]").forEach(input => {
+        input.addEventListener("input", e => {
+          const exIndex = Number(e.target.dataset.ex);
+          const setIndex = Number(e.target.dataset.set);
+          const field = e.target.dataset.field;
+          const draft = getDraft();
+          draft.exercises[exIndex].sets[setIndex][field] = e.target.value;
+          saveState();
+        });
+      });
+    }
+
+    function renderSchedule() {
+      const wrap = document.getElementById("schedule");
+      wrap.innerHTML = program.map((day, index) => `
+        <button class="day-card ${index === state.cycleIndex ? "active" : ""}" data-cycle="${index}">
+          <span>
+            <div class="day-name">${escapeHtml(day.name)}</div>
+            <div class="meta">Day ${index + 1}</div>
+          </span>
+          ${index === state.cycleIndex ? '<span class="pill">Now</span>' : ""}
+        </button>
+      `).join("");
+      document.querySelectorAll("[data-cycle]").forEach(btn => {
+        btn.addEventListener("click", () => setCycle(Number(btn.dataset.cycle)));
+      });
+    }
+
+    function renderProgress() {
+      const totalSessions = state.sessions.length;
+      const totalSets = state.sessions.flatMap(s => s.exercises || []).flatMap(e => e.sets || []).filter(s => s.weight || s.reps).length;
+      const latestWeight = state.bodyweights.at(-1);
+      const uniqueExercises = new Set(state.sessions.flatMap(s => (s.exercises || []).map(e => e.name))).size;
+      document.getElementById("metrics").innerHTML = [
+        ["Workouts", totalSessions],
+        ["Logged sets", totalSets],
+        ["Exercises", uniqueExercises],
+        ["Bodyweight", latestWeight ? `${latestWeight.weight} lb` : "--"]
+      ].map(([label, value]) => `<div class="metric"><div class="metric-value">${value}</div><div class="small">${label}</div></div>`).join("");
+
+      renderProgressTable();
+      renderHistory();
+    }
+
+    function renderProgressTable() {
+      const rows = new Map();
+      state.sessions.forEach(session => {
+        (session.exercises || []).forEach(ex => {
+          const best = bestSet(ex.sets || []);
+          if (!best) return;
+          const volume = (ex.sets || []).reduce((sum, s) => sum + (Number(s.weight) || 0) * (Number(s.reps) || 0), 0);
+          const current = rows.get(ex.name);
+          if (!current || volume > current.volume || best.weight > current.best.weight) {
+            rows.set(ex.name, { date: session.date, best, volume });
+          }
+        });
+      });
+
+      const entries = [...rows.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+      document.getElementById("progressTableWrap").innerHTML = entries.length ? `
+        <table class="progress-table">
+          <thead><tr><th>Exercise</th><th>Best Set</th><th>Best Volume</th></tr></thead>
+          <tbody>
+            ${entries.map(([name, row]) => `
+              <tr>
+                <td>${escapeHtml(name)}<div class="small">${fmtDate(row.date)}</div></td>
+                <td>${row.best.weight} x ${row.best.reps}</td>
+                <td>${Math.round(row.volume).toLocaleString()} lb</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      ` : `<div class="empty">Save a workout to see trends here.</div>`;
+    }
+
+    function renderHistory() {
+      const wrap = document.getElementById("historyList");
+      const recent = [...state.sessions].reverse().slice(0, 8);
+      wrap.innerHTML = recent.length ? recent.map(session => `
+        <div class="history-item">
+          <div class="history-top"><span>${escapeHtml(session.dayName)}</span><span>${fmtDate(session.date)}</span></div>
+          <div class="small">${session.exercises.map(ex => `${ex.name}: ${setSummary(ex.sets)}`).join(" · ")}</div>
+          ${session.notes ? `<div class="small"><strong>Notes:</strong> ${escapeHtml(session.notes)}</div>` : ""}
+        </div>
+      `).join("") : `<div class="empty">Your saved workouts will appear here.</div>`;
+    }
+
+    function renderBodyweightNote() {
+      const note = document.getElementById("bodyweightNote");
+      const weights = state.bodyweights;
+      if (weights.length < 2) {
+        note.textContent = "Target: slow upward drift, roughly 0.5 lb/week.";
+        return;
+      }
+      const first = weights[0];
+      const last = weights[weights.length - 1];
+      const days = Math.max(1, (new Date(last.date) - new Date(first.date)) / 86400000);
+      const weekly = ((Number(last.weight) - Number(first.weight)) / days) * 7;
+      note.textContent = `Trend: ${weekly >= 0 ? "+" : ""}${weekly.toFixed(2)} lb/week across saved weigh-ins.`;
+    }
+
+    function saveWorkout(advance = false) {
+      const day = activeDay();
+      if (!day.exercises.length) {
+        if (advance) setCycle(state.cycleIndex + 1);
+        showToast("Rest day marked.");
+        return;
+      }
+      const draft = getDraft();
+      draft.notes = document.getElementById("sessionNotes").value.trim();
+      const hasAny = draft.exercises.some(ex => ex.sets.some(s => s.weight || s.reps));
+      if (!hasAny) {
+        showToast("Add at least one set first.");
+        return;
+      }
+      const session = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
+        date: todayIso(),
+        cycleIndex: state.cycleIndex,
+        dayName: day.name,
+        notes: draft.notes,
+        exercises: draft.exercises
+          .map(ex => ({ ...ex, sets: ex.sets.filter(set => set.weight || set.reps) }))
+          .filter(ex => ex.sets.length)
+      };
+      state.sessions.push(session);
+      delete state.drafts[activeDraftKey()];
+      if (advance) state.cycleIndex = (state.cycleIndex + 1) % program.length;
+      saveState();
+      render();
+      showToast(advance ? "Workout saved. Next day loaded." : "Workout saved.");
+    }
+
+    function exportCsv() {
+      const header = ["date","day","exercise","set","weight","reps","session_notes"];
+      const rows = [header];
+      state.sessions.forEach(session => {
+        (session.exercises || []).forEach(ex => {
+          (ex.sets || []).forEach((set, index) => {
+            if (!(set.weight || set.reps)) return;
+            rows.push([session.date, session.dayName, ex.name, index + 1, set.weight, set.reps, session.notes || ""]);
+          });
+        });
+      });
+      download(`workout-log-${todayIso()}.csv`, rows.map(row => row.map(csvCell).join(",")).join("\n"), "text/csv");
+    }
+
+    function exportJson() {
+      download(`workout-log-${todayIso()}.json`, JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), state }, null, 2), "application/json");
+    }
+
+    function download(filename, text, type) {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Export ready.");
+    }
+
+    function csvCell(value) {
+      const text = String(value ?? "");
+      return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[ch]));
+    }
+
+    function confirmAction(title, text, onAccept) {
+      const dialog = document.getElementById("confirmDialog");
+      document.getElementById("confirmTitle").textContent = title;
+      document.getElementById("confirmText").textContent = text;
+      const accept = document.getElementById("acceptConfirm");
+      const cancel = document.getElementById("cancelConfirm");
+      const cleanup = () => {
+        accept.onclick = null;
+        cancel.onclick = null;
+        dialog.close();
+      };
+      accept.onclick = () => { cleanup(); onAccept(); };
+      cancel.onclick = cleanup;
+      dialog.showModal();
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".view").forEach(v => v.hidden = true);
+        tab.classList.add("active");
+        document.getElementById(tab.dataset.tab).hidden = false;
+        renderProgress();
+      });
+    });
+
+    document.getElementById("prevDay").addEventListener("click", () => setCycle(state.cycleIndex - 1));
+    document.getElementById("nextDay").addEventListener("click", () => setCycle(state.cycleIndex + 1));
+    document.getElementById("saveSession").addEventListener("click", () => saveWorkout(false));
+    document.getElementById("completeDay").addEventListener("click", () => saveWorkout(true));
+    document.getElementById("sessionNotes").addEventListener("input", e => {
+      getDraft().notes = e.target.value;
+      saveState();
+    });
+
+    document.getElementById("saveBodyweight").addEventListener("click", () => {
+      const input = document.getElementById("bodyweightInput");
+      const weight = Number(input.value);
+      if (!Number.isFinite(weight) || weight <= 0) {
+        showToast("Enter a bodyweight first.");
+        return;
+      }
+      const existing = state.bodyweights.find(item => item.date === todayIso());
+      if (existing) existing.weight = weight;
+      else state.bodyweights.push({ date: todayIso(), weight });
+      state.bodyweights.sort((a, b) => a.date.localeCompare(b.date));
+      input.value = "";
+      saveState();
+      render();
+      showToast("Bodyweight saved.");
+    });
+
+    document.getElementById("exportCsv").addEventListener("click", exportCsv);
+    document.getElementById("exportJson").addEventListener("click", exportJson);
+    document.getElementById("importJson").addEventListener("click", () => document.getElementById("importFile").click());
+    document.getElementById("importFile").addEventListener("change", async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      try {
+        const imported = JSON.parse(text);
+        const incoming = imported.state || imported;
+        confirmAction("Replace data?", "This will replace workouts, drafts, bodyweights, and cycle position in this browser.", () => {
+          state = { ...defaultState, ...incoming };
+          saveState();
+          render();
+          showToast("Import complete.");
+        });
+      } catch {
+        showToast("That JSON could not be imported.");
+      }
+      e.target.value = "";
+    });
+
+    document.getElementById("resetData").addEventListener("click", () => {
+      confirmAction("Reset all data?", "This clears saved workouts, bodyweights, drafts, and cycle position from this browser.", () => {
+        state = { ...defaultState };
+        saveState();
+        render();
+        showToast("Data reset.");
+      });
+    });
+
+    render();
+
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  </script>
+</body>
+</html>

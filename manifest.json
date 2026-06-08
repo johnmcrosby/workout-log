@@ -1,0 +1,8 @@
+{
+  "name": "June Hypertrophy Workout Log",
+  "short_name": "Workout Log",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f7f3ea",
+  "theme_color": "#f7f3ea"
+}
