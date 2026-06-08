@@ -403,6 +403,13 @@
       font-weight: 900;
     }
 
+    .history-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
     .progress-table {
       width: 100%;
       border-collapse: collapse;
@@ -514,12 +521,16 @@
       <div class="status">
         <div class="status-top">
           <div>
-            <p class="status-label">Today</p>
+            <p class="status-label" id="dateLabel">Today</p>
             <h2 id="todayName">Lower A</h2>
           </div>
-          <span class="pill" id="cyclePill">Day 1</span>
+          <span class="pill" id="cyclePill">Day 1 · Jun 8</span>
         </div>
         <p class="subhead" id="todayHint">Heavy bilateral day. Prioritize clean progression.</p>
+        <div style="margin-top:12px;">
+          <label class="small" for="activeDateInput">Workout date</label>
+          <input id="activeDateInput" type="date" aria-label="Workout date">
+        </div>
         <div class="actions">
           <button class="btn ghost" id="prevDay" aria-label="Previous workout day">←</button>
           <button class="btn primary" id="completeDay">Finish</button>
@@ -636,8 +647,21 @@
 
   <script>
     const STORE_KEY = "jm-hypertrophy-log-v1";
-    const todayIso = () => new Date().toISOString().slice(0, 10);
+    const toIso = (date) => {
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+    const todayIso = () => toIso(new Date());
+    const addDays = (iso, days) => {
+      const d = new Date(`${iso}T12:00:00`);
+      d.setDate(d.getDate() + days);
+      return toIso(d);
+    };
     const fmtDate = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const fmtLongDate = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 
     const program = [
       {
@@ -691,6 +715,8 @@
     const defaultState = {
       cycleIndex: 0,
       anchorDate: "2026-06-08",
+      activeDate: "2026-06-08",
+      editingSessionId: null,
       sessions: [],
       drafts: {},
       bodyweights: []
@@ -701,7 +727,10 @@
     function loadState() {
       try {
         const parsed = JSON.parse(localStorage.getItem(STORE_KEY));
-        return { ...defaultState, ...parsed };
+        const loaded = { ...defaultState, ...parsed };
+        if (!loaded.activeDate) loaded.activeDate = todayIso();
+        if (!("editingSessionId" in loaded)) loaded.editingSessionId = null;
+        return loaded;
       } catch {
         return { ...defaultState };
       }
@@ -716,7 +745,7 @@
     }
 
     function activeDraftKey() {
-      return `${todayIso()}-${state.cycleIndex}`;
+      return `${state.activeDate}-${state.cycleIndex}`;
     }
 
     function getDraft() {
@@ -729,7 +758,7 @@
 
     function makeDraft() {
       return {
-        date: todayIso(),
+        date: state.activeDate,
         cycleIndex: state.cycleIndex,
         notes: "",
         exercises: activeDay().exercises.map(ex => ({
@@ -742,8 +771,23 @@
 
     function setCycle(index) {
       state.cycleIndex = (index + program.length) % program.length;
+      state.editingSessionId = null;
       saveState();
       render();
+    }
+
+    function moveSelectedDay(delta) {
+      state.activeDate = addDays(state.activeDate, delta);
+      state.cycleIndex = (state.cycleIndex + delta + program.length) % program.length;
+      state.editingSessionId = null;
+      saveState();
+      render();
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tabName));
+      document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== tabName);
+      renderProgress();
     }
 
     function lastComparable(exerciseName) {
@@ -777,12 +821,16 @@
 
     function render() {
       const day = activeDay();
+      const isToday = state.activeDate === todayIso();
+      document.getElementById("dateLabel").textContent = isToday ? "Today" : "Selected Date";
       document.getElementById("todayName").textContent = day.name;
-      document.getElementById("cyclePill").textContent = `Day ${state.cycleIndex + 1}`;
+      document.getElementById("cyclePill").textContent = `Day ${state.cycleIndex + 1} · ${fmtLongDate(state.activeDate)}`;
+      document.getElementById("activeDateInput").value = state.activeDate;
       document.getElementById("todayHint").textContent = day.hint;
       document.getElementById("logTitle").textContent = day.name;
       document.getElementById("logSubtitle").textContent = day.exercises.length ? "Log today's working sets." : "Rest day. Walk, recover, and keep the rhythm flexible.";
-      document.getElementById("sessionState").textContent = day.exercises.length ? "Open" : "Rest";
+      document.getElementById("sessionState").textContent = state.editingSessionId ? "Editing" : (day.exercises.length ? "Open" : "Rest");
+      document.getElementById("saveSession").textContent = state.editingSessionId ? "Update Workout" : "Save Workout";
       renderLog();
       renderSchedule();
       renderProgress();
@@ -857,17 +905,22 @@
 
     function renderSchedule() {
       const wrap = document.getElementById("schedule");
-      wrap.innerHTML = program.map((day, index) => `
-        <button class="day-card ${index === state.cycleIndex ? "active" : ""}" data-cycle="${index}">
+      wrap.innerHTML = Array.from({ length: program.length }, (_, offset) => {
+        const index = (state.cycleIndex + offset) % program.length;
+        const day = program[index];
+        const date = addDays(state.activeDate, offset);
+        return `
+        <button class="day-card ${offset === 0 ? "active" : ""}" data-offset="${offset}">
           <span>
             <div class="day-name">${escapeHtml(day.name)}</div>
-            <div class="meta">Day ${index + 1}</div>
+            <div class="meta">Day ${index + 1} · ${fmtDate(date)}</div>
           </span>
-          ${index === state.cycleIndex ? '<span class="pill">Now</span>' : ""}
+          ${offset === 0 ? '<span class="pill">Now</span>' : ""}
         </button>
-      `).join("");
-      document.querySelectorAll("[data-cycle]").forEach(btn => {
-        btn.addEventListener("click", () => setCycle(Number(btn.dataset.cycle)));
+      `;
+      }).join("");
+      document.querySelectorAll("[data-offset]").forEach(btn => {
+        btn.addEventListener("click", () => moveSelectedDay(Number(btn.dataset.offset)));
       });
     }
 
@@ -926,8 +979,55 @@
           <div class="history-top"><span>${escapeHtml(session.dayName)}</span><span>${fmtDate(session.date)}</span></div>
           <div class="small">${session.exercises.map(ex => `${ex.name}: ${setSummary(ex.sets)}`).join(" · ")}</div>
           ${session.notes ? `<div class="small"><strong>Notes:</strong> ${escapeHtml(session.notes)}</div>` : ""}
+          <div class="history-actions">
+            <button class="btn ghost" data-edit-session="${escapeHtml(session.id)}">Edit</button>
+            <button class="btn warn" data-delete-session="${escapeHtml(session.id)}">Delete</button>
+          </div>
         </div>
       `).join("") : `<div class="empty">Your saved workouts will appear here.</div>`;
+      document.querySelectorAll("[data-edit-session]").forEach(btn => {
+        btn.addEventListener("click", () => editSession(btn.dataset.editSession));
+      });
+      document.querySelectorAll("[data-delete-session]").forEach(btn => {
+        btn.addEventListener("click", () => deleteSession(btn.dataset.deleteSession));
+      });
+    }
+
+    function editSession(id) {
+      const session = state.sessions.find(item => item.id === id);
+      if (!session) return;
+      state.activeDate = session.date;
+      state.cycleIndex = session.cycleIndex;
+      state.editingSessionId = id;
+      state.drafts[`${session.date}-${session.cycleIndex}`] = JSON.parse(JSON.stringify({
+        date: session.date,
+        cycleIndex: session.cycleIndex,
+        notes: session.notes || "",
+        exercises: activeDay().exercises.map(ex => {
+          const saved = (session.exercises || []).find(item => item.id === ex.id || ex.names.includes(item.name));
+          return {
+            id: ex.id,
+            name: saved?.name || ex.names[0],
+            sets: Array.from({ length: ex.sets }, (_, index) => saved?.sets?.[index] || { weight: "", reps: "" })
+          };
+        })
+      }));
+      saveState();
+      switchTab("log");
+      render();
+      showToast("Workout loaded for editing.");
+    }
+
+    function deleteSession(id) {
+      const session = state.sessions.find(item => item.id === id);
+      if (!session) return;
+      confirmAction("Delete workout?", `${session.dayName} on ${fmtLongDate(session.date)} will be removed.`, () => {
+        state.sessions = state.sessions.filter(item => item.id !== id);
+        if (state.editingSessionId === id) state.editingSessionId = null;
+        saveState();
+        render();
+        showToast("Workout deleted.");
+      });
     }
 
     function renderBodyweightNote() {
@@ -947,7 +1047,7 @@
     function saveWorkout(advance = false) {
       const day = activeDay();
       if (!day.exercises.length) {
-        if (advance) setCycle(state.cycleIndex + 1);
+        if (advance) moveSelectedDay(1);
         showToast("Rest day marked.");
         return;
       }
@@ -959,8 +1059,8 @@
         return;
       }
       const session = {
-        id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
-        date: todayIso(),
+        id: state.editingSessionId || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`),
+        date: state.activeDate,
         cycleIndex: state.cycleIndex,
         dayName: day.name,
         notes: draft.notes,
@@ -968,9 +1068,17 @@
           .map(ex => ({ ...ex, sets: ex.sets.filter(set => set.weight || set.reps) }))
           .filter(ex => ex.sets.length)
       };
-      state.sessions.push(session);
+      if (state.editingSessionId) {
+        state.sessions = state.sessions.map(item => item.id === state.editingSessionId ? session : item);
+      } else {
+        state.sessions.push(session);
+      }
       delete state.drafts[activeDraftKey()];
-      if (advance) state.cycleIndex = (state.cycleIndex + 1) % program.length;
+      state.editingSessionId = null;
+      if (advance) {
+        state.activeDate = addDays(state.activeDate, 1);
+        state.cycleIndex = (state.cycleIndex + 1) % program.length;
+      }
       saveState();
       render();
       showToast(advance ? "Workout saved. Next day loaded." : "Workout saved.");
@@ -1041,17 +1149,18 @@
     }
 
     document.querySelectorAll(".tab").forEach(tab => {
-      tab.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-        document.querySelectorAll(".view").forEach(v => v.hidden = true);
-        tab.classList.add("active");
-        document.getElementById(tab.dataset.tab).hidden = false;
-        renderProgress();
-      });
+      tab.addEventListener("click", () => switchTab(tab.dataset.tab));
     });
 
-    document.getElementById("prevDay").addEventListener("click", () => setCycle(state.cycleIndex - 1));
-    document.getElementById("nextDay").addEventListener("click", () => setCycle(state.cycleIndex + 1));
+    document.getElementById("prevDay").addEventListener("click", () => moveSelectedDay(-1));
+    document.getElementById("nextDay").addEventListener("click", () => moveSelectedDay(1));
+    document.getElementById("activeDateInput").addEventListener("change", e => {
+      if (!e.target.value) return;
+      state.activeDate = e.target.value;
+      state.editingSessionId = null;
+      saveState();
+      render();
+    });
     document.getElementById("saveSession").addEventListener("click", () => saveWorkout(false));
     document.getElementById("completeDay").addEventListener("click", () => saveWorkout(true));
     document.getElementById("sessionNotes").addEventListener("input", e => {
@@ -1066,9 +1175,9 @@
         showToast("Enter a bodyweight first.");
         return;
       }
-      const existing = state.bodyweights.find(item => item.date === todayIso());
+      const existing = state.bodyweights.find(item => item.date === state.activeDate);
       if (existing) existing.weight = weight;
-      else state.bodyweights.push({ date: todayIso(), weight });
+      else state.bodyweights.push({ date: state.activeDate, weight });
       state.bodyweights.sort((a, b) => a.date.localeCompare(b.date));
       input.value = "";
       saveState();
