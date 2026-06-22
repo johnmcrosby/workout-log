@@ -328,6 +328,13 @@
       gap: 8px;
     }
 
+    .workout-controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
     .schedule {
       display: grid;
       gap: 8px;
@@ -506,6 +513,7 @@
       .schedule { grid-template-columns: repeat(7, 1fr); }
       .day-card { display: block; min-height: 112px; }
       .metric-grid { grid-template-columns: repeat(4, 1fr); }
+      .workout-controls { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
@@ -527,14 +535,15 @@
           <span class="pill" id="cyclePill">Day 1 · Jun 8</span>
         </div>
         <p class="subhead" id="todayHint">Heavy bilateral day. Prioritize clean progression.</p>
-        <div style="margin-top:12px;">
-          <label class="small" for="activeDateInput">Workout date</label>
-          <input id="activeDateInput" type="date" aria-label="Workout date">
-        </div>
-        <div class="actions">
-          <button class="btn ghost" id="prevDay" aria-label="Previous workout day">←</button>
-          <button class="btn primary" id="completeDay">Finish</button>
-          <button class="btn ghost" id="nextDay" aria-label="Next workout day">→</button>
+        <div class="workout-controls">
+          <div>
+            <label class="small" for="workoutSelect">Workout</label>
+            <select id="workoutSelect" aria-label="Workout"></select>
+          </div>
+          <div>
+            <label class="small" for="activeDateInput">Workout date</label>
+            <input id="activeDateInput" type="date" aria-label="Workout date">
+          </div>
         </div>
       </div>
 
@@ -566,9 +575,11 @@
             <span class="pill" id="sessionState">Open</span>
           </div>
           <div id="exerciseList"></div>
-          <label class="small" for="sessionNotes">Session notes</label>
-          <textarea id="sessionNotes" placeholder="Energy, sleep, pain, travel setup, equipment changes..."></textarea>
-          <button class="btn primary" id="saveSession" style="width:100%; margin-top:10px;">Save Workout</button>
+          <div id="sessionControls">
+            <label class="small" for="sessionNotes">Session notes</label>
+            <textarea id="sessionNotes" placeholder="Energy, sleep, pain, travel setup, equipment changes..."></textarea>
+            <button class="btn primary" id="saveSession" style="width:100%; margin-top:10px;">Save Workout</button>
+          </div>
         </div>
       </section>
 
@@ -577,7 +588,7 @@
           <div class="section-title">
             <div>
               <h3>Current Cycle</h3>
-              <div class="small">Move forward or backward whenever travel shifts the rhythm.</div>
+              <div class="small">Reference view only. Choose the workout and date independently from the Log tab.</div>
             </div>
           </div>
           <div class="schedule" id="schedule"></div>
@@ -599,7 +610,12 @@
           <div class="metric-grid" id="metrics"></div>
         </div>
         <div class="panel">
-          <h3>Exercise Trends</h3>
+          <div class="section-title">
+            <div>
+              <h3>Exercise Trends</h3>
+              <div class="small">Best set is the heaviest load logged, with reps breaking ties. Most recent is the strongest set from the latest workout.</div>
+            </div>
+          </div>
           <div id="progressTableWrap"></div>
         </div>
         <div class="panel">
@@ -680,7 +696,7 @@
         hint: "Push emphasis with weighted calisthenics.",
         exercises: [
           { id: "weighted-dips-a", names: ["Weighted dips"], sets: 4, reps: "6-10", note: "Add belt weight." },
-          { id: "weighted-neutral-pullups", names: ["Weighted neutral-grip pullups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
+          { id: "weighted-neutral-pullups", names: ["Weighted Neutral Grip Pull-ups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
           { id: "pushups-db-press", names: ["Decline pushups w/ parallettes", "DB press"], sets: 3, reps: "near failure", note: "Superset with lateral raises if desired." },
           { id: "db-lateral-raise", names: ["DB lateral raise"], sets: 3, reps: "12-15", note: "" },
           { id: "db-curl", names: ["DB curl"], sets: 3, reps: "10-12", note: "Optional." }
@@ -692,7 +708,7 @@
         hint: "Unilateral and posterior emphasis.",
         exercises: [
           { id: "rdl", names: ["Trap bar RDL", "DB RDL"], sets: 4, reps: "8-10", note: "Hinge, hamstring focus." },
-          { id: "lunge-stepup", names: ["Reverse lunge", "Sandbag step-up"], sets: 3, reps: "10 /leg", note: "" },
+          { id: "lunge-stepup", names: ["Reverse lunge", "Sandbag step-up", "Dumbbell step-up"], sets: 3, reps: "10 /leg", note: "" },
           { id: "sandbag-squat", names: ["Sandbag squat"], sets: 3, reps: "12-15", note: "Higher-rep quad work." },
           { id: "calf-raise", names: ["Calf raise"], sets: 3, reps: "15-20", note: "" }
         ]
@@ -701,7 +717,7 @@
         name: "Upper B",
         hint: "Pull emphasis with lighter dips.",
         exercises: [
-          { id: "weighted-pullups", names: ["Weighted pullups"], sets: 4, reps: "6-10", note: "" },
+          { id: "weighted-neutral-pullups", names: ["Weighted Neutral Grip Pull-ups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
           { id: "row", names: ["DB row", "Sandbag row"], sets: 4, reps: "8-12", note: "Sandbag rows may need higher reps." },
           { id: "weighted-dips-b", names: ["Weighted dips"], sets: 3, reps: "8-12", note: "Lighter than Upper A." },
           { id: "db-overhead-press", names: ["DB overhead press"], sets: 3, reps: "8-12", note: "" },
@@ -711,6 +727,15 @@
       { name: "Rest", hint: "Daily 2.25-mile unweighted walk only.", exercises: [] },
       { name: "Rest", hint: "Daily 2.25-mile unweighted walk only.", exercises: [] }
     ];
+
+    const workoutIndices = program
+      .map((day, index) => day.exercises.length ? index : null)
+      .filter(index => index !== null);
+
+    function normalizeWorkoutIndex(index) {
+      if (workoutIndices.includes(index)) return index;
+      return workoutIndices.find(workoutIndex => workoutIndex > index) ?? workoutIndices[0];
+    }
 
     const defaultState = {
       cycleIndex: 0,
@@ -730,6 +755,7 @@
         const loaded = { ...defaultState, ...parsed };
         if (!loaded.activeDate) loaded.activeDate = todayIso();
         if (!("editingSessionId" in loaded)) loaded.editingSessionId = null;
+        loaded.cycleIndex = normalizeWorkoutIndex(Number(loaded.cycleIndex) || 0);
         return loaded;
       } catch {
         return { ...defaultState };
@@ -770,15 +796,7 @@
     }
 
     function setCycle(index) {
-      state.cycleIndex = (index + program.length) % program.length;
-      state.editingSessionId = null;
-      saveState();
-      render();
-    }
-
-    function moveSelectedDay(delta) {
-      state.activeDate = addDays(state.activeDate, delta);
-      state.cycleIndex = (state.cycleIndex + delta + program.length) % program.length;
+      state.cycleIndex = normalizeWorkoutIndex(Number(index));
       state.editingSessionId = null;
       saveState();
       render();
@@ -791,10 +809,11 @@
     }
 
     function lastComparable(exerciseName) {
+      const targetName = canonicalExerciseName({ name: exerciseName });
       const rows = [];
-      [...state.sessions].reverse().some(session => {
+      [...state.sessions].sort((a, b) => b.date.localeCompare(a.date)).some(session => {
         for (const ex of session.exercises || []) {
-          if (ex.name === exerciseName) {
+          if (canonicalExerciseName(ex) === targetName) {
             rows.push({ session, ex });
             return true;
           }
@@ -804,11 +823,31 @@
       return rows[0] || null;
     }
 
+    function canonicalExerciseName(exercise) {
+      const id = String(exercise?.id || "").toLowerCase();
+      const name = String(exercise?.name || "").toLowerCase().replaceAll("-", " ");
+      if (
+        id === "weighted-neutral-pullups" ||
+        id === "weighted-pullups" ||
+        (name.includes("weighted") && name.includes("pullup")) ||
+        (name.includes("weighted") && name.includes("pull up"))
+      ) {
+        return "Weighted Neutral Grip Pull-ups";
+      }
+      return exercise?.name || "Unknown exercise";
+    }
+
+    function isBetterSet(candidate, current) {
+      return !current ||
+        candidate.weight > current.weight ||
+        (candidate.weight === current.weight && candidate.reps > current.reps);
+    }
+
     function bestSet(sets) {
       const parsed = sets
         .map(s => ({ weight: Number(s.weight), reps: Number(s.reps) }))
         .filter(s => Number.isFinite(s.weight) && Number.isFinite(s.reps) && s.reps > 0);
-      parsed.sort((a, b) => (b.weight * b.reps) - (a.weight * a.reps));
+      parsed.sort((a, b) => b.weight - a.weight || b.reps - a.reps);
       return parsed[0];
     }
 
@@ -825,12 +864,18 @@
       document.getElementById("dateLabel").textContent = isToday ? "Today" : "Selected Date";
       document.getElementById("todayName").textContent = day.name;
       document.getElementById("cyclePill").textContent = `Day ${state.cycleIndex + 1} · ${fmtLongDate(state.activeDate)}`;
+      const workoutSelect = document.getElementById("workoutSelect");
+      workoutSelect.innerHTML = workoutIndices
+        .map(index => `<option value="${index}">${escapeHtml(program[index].name)}</option>`)
+        .join("");
+      workoutSelect.value = String(state.cycleIndex);
       document.getElementById("activeDateInput").value = state.activeDate;
       document.getElementById("todayHint").textContent = day.hint;
       document.getElementById("logTitle").textContent = day.name;
       document.getElementById("logSubtitle").textContent = day.exercises.length ? "Log today's working sets." : "Rest day. Walk, recover, and keep the rhythm flexible.";
       document.getElementById("sessionState").textContent = state.editingSessionId ? "Editing" : (day.exercises.length ? "Open" : "Rest");
       document.getElementById("saveSession").textContent = state.editingSessionId ? "Update Workout" : "Save Workout";
+      document.getElementById("sessionControls").hidden = !day.exercises.length;
       renderLog();
       renderSchedule();
       renderProgress();
@@ -841,7 +886,7 @@
       const wrap = document.getElementById("exerciseList");
       const day = activeDay();
       if (!day.exercises.length) {
-        wrap.innerHTML = `<div class="empty">No lifting today. Use Finish to advance when this rest day is complete.</div>`;
+        wrap.innerHTML = `<div class="empty">Rest days are shown in the Plan only and are not recorded.</div>`;
         document.getElementById("sessionNotes").value = "";
         return;
       }
@@ -910,25 +955,22 @@
         const day = program[index];
         const date = addDays(state.activeDate, offset);
         return `
-        <button class="day-card ${offset === 0 ? "active" : ""}" data-offset="${offset}">
+        <div class="day-card ${offset === 0 ? "active" : ""}">
           <span>
             <div class="day-name">${escapeHtml(day.name)}</div>
             <div class="meta">Day ${index + 1} · ${fmtDate(date)}</div>
           </span>
-          ${offset === 0 ? '<span class="pill">Now</span>' : ""}
-        </button>
+          ${offset === 0 ? '<span class="pill">Selected</span>' : ""}
+        </div>
       `;
       }).join("");
-      document.querySelectorAll("[data-offset]").forEach(btn => {
-        btn.addEventListener("click", () => moveSelectedDay(Number(btn.dataset.offset)));
-      });
     }
 
     function renderProgress() {
       const totalSessions = state.sessions.length;
       const totalSets = state.sessions.flatMap(s => s.exercises || []).flatMap(e => e.sets || []).filter(s => s.weight || s.reps).length;
       const latestWeight = state.bodyweights.at(-1);
-      const uniqueExercises = new Set(state.sessions.flatMap(s => (s.exercises || []).map(e => e.name))).size;
+      const uniqueExercises = new Set(state.sessions.flatMap(s => (s.exercises || []).map(canonicalExerciseName))).size;
       document.getElementById("metrics").innerHTML = [
         ["Workouts", totalSessions],
         ["Logged sets", totalSets],
@@ -942,28 +984,32 @@
 
     function renderProgressTable() {
       const rows = new Map();
-      state.sessions.forEach(session => {
+      [...state.sessions].sort((a, b) => a.date.localeCompare(b.date)).forEach(session => {
         (session.exercises || []).forEach(ex => {
-          const best = bestSet(ex.sets || []);
-          if (!best) return;
-          const volume = (ex.sets || []).reduce((sum, s) => sum + (Number(s.weight) || 0) * (Number(s.reps) || 0), 0);
-          const current = rows.get(ex.name);
-          if (!current || volume > current.volume || best.weight > current.best.weight) {
-            rows.set(ex.name, { date: session.date, best, volume });
+          const sessionBest = bestSet(ex.sets || []);
+          if (!sessionBest) return;
+          const name = canonicalExerciseName(ex);
+          const current = rows.get(name) || { best: null, bestDate: "", recent: null, recentDate: "" };
+          if (isBetterSet(sessionBest, current.best)) {
+            current.best = sessionBest;
+            current.bestDate = session.date;
           }
+          current.recent = sessionBest;
+          current.recentDate = session.date;
+          rows.set(name, current);
         });
       });
 
       const entries = [...rows.entries()].sort((a, b) => a[0].localeCompare(b[0]));
       document.getElementById("progressTableWrap").innerHTML = entries.length ? `
         <table class="progress-table">
-          <thead><tr><th>Exercise</th><th>Best Set</th><th>Best Volume</th></tr></thead>
+          <thead><tr><th>Exercise</th><th>Best Set</th><th>Most Recent</th></tr></thead>
           <tbody>
             ${entries.map(([name, row]) => `
               <tr>
-                <td>${escapeHtml(name)}<div class="small">${fmtDate(row.date)}</div></td>
-                <td>${row.best.weight} x ${row.best.reps}</td>
-                <td>${Math.round(row.volume).toLocaleString()} lb</td>
+                <td>${escapeHtml(name)}</td>
+                <td>${row.best.weight} x ${row.best.reps}<div class="small">${fmtDate(row.bestDate)}</div></td>
+                <td>${row.recent.weight} x ${row.recent.reps}<div class="small">${fmtDate(row.recentDate)}</div></td>
               </tr>
             `).join("")}
           </tbody>
@@ -973,7 +1019,11 @@
 
     function renderHistory() {
       const wrap = document.getElementById("historyList");
-      const recent = [...state.sessions].reverse().slice(0, 8);
+      const recent = state.sessions
+        .map((session, index) => ({ session, index }))
+        .sort((a, b) => b.session.date.localeCompare(a.session.date) || b.index - a.index)
+        .slice(0, 8)
+        .map(item => item.session);
       wrap.innerHTML = recent.length ? recent.map(session => `
         <div class="history-item">
           <div class="history-top"><span>${escapeHtml(session.dayName)}</span><span>${fmtDate(session.date)}</span></div>
@@ -1004,7 +1054,11 @@
         cycleIndex: session.cycleIndex,
         notes: session.notes || "",
         exercises: activeDay().exercises.map(ex => {
-          const saved = (session.exercises || []).find(item => item.id === ex.id || ex.names.includes(item.name));
+          const saved = (session.exercises || []).find(item =>
+            item.id === ex.id ||
+            ex.names.includes(item.name) ||
+            canonicalExerciseName(item) === canonicalExerciseName({ id: ex.id, name: ex.names[0] })
+          );
           return {
             id: ex.id,
             name: saved?.name || ex.names[0],
@@ -1044,11 +1098,10 @@
       note.textContent = `Trend: ${weekly >= 0 ? "+" : ""}${weekly.toFixed(2)} lb/week across saved weigh-ins.`;
     }
 
-    function saveWorkout(advance = false) {
+    function saveWorkout() {
       const day = activeDay();
       if (!day.exercises.length) {
-        if (advance) moveSelectedDay(1);
-        showToast("Rest day marked.");
+        showToast("Rest days are not recorded.");
         return;
       }
       const draft = getDraft();
@@ -1075,13 +1128,9 @@
       }
       delete state.drafts[activeDraftKey()];
       state.editingSessionId = null;
-      if (advance) {
-        state.activeDate = addDays(state.activeDate, 1);
-        state.cycleIndex = (state.cycleIndex + 1) % program.length;
-      }
       saveState();
       render();
-      showToast(advance ? "Workout saved. Next day loaded." : "Workout saved.");
+      showToast("Workout saved.");
     }
 
     function exportCsv() {
@@ -1152,8 +1201,9 @@
       tab.addEventListener("click", () => switchTab(tab.dataset.tab));
     });
 
-    document.getElementById("prevDay").addEventListener("click", () => moveSelectedDay(-1));
-    document.getElementById("nextDay").addEventListener("click", () => moveSelectedDay(1));
+    document.getElementById("workoutSelect").addEventListener("change", e => {
+      setCycle(Number(e.target.value));
+    });
     document.getElementById("activeDateInput").addEventListener("change", e => {
       if (!e.target.value) return;
       state.activeDate = e.target.value;
@@ -1161,8 +1211,7 @@
       saveState();
       render();
     });
-    document.getElementById("saveSession").addEventListener("click", () => saveWorkout(false));
-    document.getElementById("completeDay").addEventListener("click", () => saveWorkout(true));
+    document.getElementById("saveSession").addEventListener("click", saveWorkout);
     document.getElementById("sessionNotes").addEventListener("input", e => {
       getDraft().notes = e.target.value;
       saveState();
