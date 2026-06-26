@@ -737,6 +737,11 @@
       return workoutIndices.find(workoutIndex => workoutIndex > index) ?? workoutIndices[0];
     }
 
+    function nextWorkoutIndex(index) {
+      const currentPosition = workoutIndices.indexOf(normalizeWorkoutIndex(index));
+      return workoutIndices[(currentPosition + 1) % workoutIndices.length];
+    }
+
     const defaultState = {
       cycleIndex: 0,
       anchorDate: "2026-06-08",
@@ -1121,16 +1126,21 @@
           .map(ex => ({ ...ex, sets: ex.sets.filter(set => set.weight || set.reps) }))
           .filter(ex => ex.sets.length)
       };
-      if (state.editingSessionId) {
+      const wasEditing = Boolean(state.editingSessionId);
+      if (wasEditing) {
         state.sessions = state.sessions.map(item => item.id === state.editingSessionId ? session : item);
       } else {
         state.sessions.push(session);
       }
       delete state.drafts[activeDraftKey()];
       state.editingSessionId = null;
+      if (!wasEditing) {
+        state.cycleIndex = nextWorkoutIndex(state.cycleIndex);
+        state.activeDate = addDays(state.activeDate, 1);
+      }
       saveState();
       render();
-      showToast("Workout saved.");
+      showToast(wasEditing ? "Workout updated." : "Workout saved. Next workout is ready.");
     }
 
     function exportCsv() {
