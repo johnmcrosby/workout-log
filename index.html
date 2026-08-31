@@ -687,8 +687,8 @@
         name: "Upper A",
         hint: "Push emphasis with weighted calisthenics.",
         exercises: [
-          { id: "weighted-dips-a", names: ["Weighted dips"], sets: 4, reps: "6-10", note: "Add belt weight." },
-          { id: "weighted-neutral-pullups", names: ["Weighted Neutral Grip Pull-ups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
+          { id: "weighted-dips-a", names: ["Dips"], sets: 4, reps: "6-10", note: "Add belt weight." },
+          { id: "weighted-neutral-pullups", names: ["Pull-ups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
           { id: "pushups-db-press", names: ["Decline pushups w/ parallettes", "DB press"], sets: 3, reps: "near failure", note: "Superset with lateral raises if desired." },
           { id: "db-lateral-raise", names: ["DB lateral raise"], sets: 3, reps: "12-15", note: "" },
           { id: "db-curl", names: ["DB curl"], sets: 3, reps: "10-12", note: "Optional." }
@@ -709,9 +709,9 @@
         name: "Upper B",
         hint: "Pull emphasis with lighter dips.",
         exercises: [
-          { id: "weighted-neutral-pullups", names: ["Weighted Neutral Grip Pull-ups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
+          { id: "weighted-neutral-pullups", names: ["Pull-ups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
           { id: "row", names: ["DB row", "Sandbag row"], sets: 4, reps: "8-12", note: "Sandbag rows may need higher reps." },
-          { id: "weighted-dips-b", names: ["Weighted dips"], sets: 3, reps: "8-12", note: "Lighter than Upper A." },
+          { id: "weighted-dips-b", names: ["Dips"], sets: 3, reps: "8-12", note: "Lighter than Upper A." },
           { id: "db-overhead-press", names: ["DB overhead press"], sets: 3, reps: "8-12", note: "" },
           { id: "rear-delt", names: ["Rear delt raise", "Face pull"], sets: 3, reps: "15-20", note: "Superset with OHP if desired." }
         ]
@@ -821,15 +821,22 @@
     }
 
     function canonicalExerciseName(exercise) {
+      // Collapses the display names a movement has been logged under, so
+      // "Last comparable" and the progress table match across sessions.
+      // Sessions saved before 2026-08-31 carry "Weighted dips" and "Weighted
+      // Neutral Grip Pull-ups"; the ids never changed, so they still match.
       const id = String(exercise?.id || "").toLowerCase();
       const name = String(exercise?.name || "").toLowerCase().replaceAll("-", " ");
       if (
         id === "weighted-neutral-pullups" ||
         id === "weighted-pullups" ||
-        (name.includes("weighted") && name.includes("pullup")) ||
-        (name.includes("weighted") && name.includes("pull up"))
+        name.includes("pullup") ||
+        name.includes("pull up")
       ) {
-        return "Weighted Neutral Grip Pull-ups";
+        return "Pull-ups";
+      }
+      if (id === "weighted-dips-a" || id === "weighted-dips-b" || name.includes("dip")) {
+        return "Dips";
       }
       return exercise?.name || "Unknown exercise";
     }
