@@ -1155,11 +1155,11 @@
       // Try the Mini first; fall back to a download so a save is never left
       // without a backup. Never block the save on either.
       showToast(wasEditing ? "Workout updated." : "Workout saved.");
-      syncToMini().then(ok => {
-        if (ok) {
+      syncToMini().then(r => {
+        if (r.ok) {
           showToast("Synced to the Mini.");
         } else {
-          try { exportJson(true); showToast("Saved — export ready to file."); }
+          try { exportJson(true); showToast(`Saved — ${r.why}. Export ready to file.`); }
           catch (err) { /* nothing more we can do */ }
         }
       });
@@ -1186,11 +1186,21 @@
     // kept in localStorage instead.
     const SYNC_URL = "https://mini.taild6c358.ts.net/workout";
 
-    function syncSecret(promptIfMissing) {
+    function syncSecret(askAlways) {
       let key = state.syncSecret || "";
-      if (!key && promptIfMissing) {
-        key = (window.prompt("Sync key (from ~/.hermes/.env on the Mini):") || "").trim();
-        if (key) { state.syncSecret = key; saveState(); }
+      if (askAlways || !key) {
+        // Pre-filled so a wrong key can be SEEN and corrected. The first
+        // version only prompted when nothing was stored, so a mistyped key was
+        // permanent — every later tap failed with no way to fix it.
+        const entered = window.prompt(
+          "Sync key from ~/.hermes/.env on the Mini (the part after the = sign):",
+          key);
+        if (entered === null) return key;          // cancelled
+        // Tolerate a whole "NAME=value" line, stray quotes and whitespace: the
+        // real key is 32 url-safe characters and pasting picks up extras.
+        key = entered.trim().replace(/^.*?=/, "").replace(/^["']|["']$/g, "").trim();
+        state.syncSecret = key;
+        saveState();
       }
       return key;
     }
@@ -1200,16 +1210,20 @@
     // download manager, so that path needs a manual Save to Files.
     async function syncToMini() {
       const key = syncSecret(false);
-      if (!key) return false;
+      if (!key) return { ok: false, why: "no sync key set" };
       try {
         const res = await fetch(SYNC_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Workout-Secret": key },
           body: JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), state })
         });
-        return res.ok;
+        // Report what the Mini actually said. Returning a bare boolean made a
+        // rejected key look exactly like being off the tailnet.
+        let detail = "";
+        try { detail = (await res.json()).detail || ""; } catch (e) {}
+        return { ok: res.ok, status: res.status, why: detail || `HTTP ${res.status}` };
       } catch (err) {
-        return false;                 // off tailnet, Mini asleep, anything
+        return { ok: false, why: "could not reach the Mini — on the tailnet?" };
       }
     }
 
@@ -1284,8 +1298,10 @@
     });
 
     document.getElementById("syncNow").addEventListener("click", async () => {
+      // Always offer the key, pre-filled, so it can be inspected and corrected.
       syncSecret(true);
-      showToast(await syncToMini() ? "Synced to the Mini." : "Sync failed — on the tailnet?");
+      const r = await syncToMini();
+      showToast(r.ok ? "Synced to the Mini." : `Sync failed: ${r.why}`);
     });
 
     document.getElementById("exportCsv").addEventListener("click", exportCsv);
