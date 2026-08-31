@@ -776,7 +776,24 @@
       if (!state.drafts[key]) {
         state.drafts[key] = makeDraft();
       }
-      return state.drafts[key];
+      const draft = state.drafts[key];
+
+      // Heal stale display names. makeDraft() snapshots ex.names[0] at creation,
+      // so a draft made before an exercise was renamed keeps the old label for
+      // ever — after "Weighted dips" became "Dips" on 2026-08-31, Upper A still
+      // showed the old names because a draft was sitting on it while Upper B,
+      // which had none, showed the new ones.
+      //
+      // Only reset when the stored name is no longer valid FOR THAT ID. A
+      // deliberate toggle — Sandbag squat vs Sandbag good morning — is a real
+      // choice and must survive.
+      const namesById = new Map(activeDay().exercises.map(ex => [ex.id, ex.names]));
+      draft.exercises.forEach(dex => {
+        const valid = namesById.get(dex.id);
+        if (valid && !valid.includes(dex.name)) dex.name = valid[0];
+      });
+
+      return draft;
     }
 
     function makeDraft() {
