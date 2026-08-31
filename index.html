@@ -547,14 +547,6 @@
         </div>
       </div>
 
-      <div class="status">
-        <p class="status-label">Weekly weigh-in</p>
-        <div class="quick-grid">
-          <input id="bodyweightInput" type="number" inputmode="decimal" placeholder="lb" min="0" step="0.1" aria-label="Bodyweight in pounds">
-          <button class="btn primary" id="saveBodyweight">Save</button>
-        </div>
-        <p class="footer-note" id="bodyweightNote">Target: slow upward drift, roughly 0.5 lb/week.</p>
-      </div>
     </div>
 
     <nav class="tabs" aria-label="App sections">
@@ -695,8 +687,8 @@
         name: "Upper A",
         hint: "Push emphasis with weighted calisthenics.",
         exercises: [
-          { id: "weighted-dips-a", names: ["Weighted dips"], sets: 4, reps: "6-10", note: "Add belt weight." },
-          { id: "weighted-neutral-pullups", names: ["Weighted Neutral Grip Pull-ups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
+          { id: "weighted-dips-a", names: ["Dips"], sets: 4, reps: "6-10", note: "Add belt weight." },
+          { id: "weighted-neutral-pullups", names: ["Pull-ups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
           { id: "pushups-db-press", names: ["Decline pushups w/ parallettes", "DB press"], sets: 3, reps: "near failure", note: "Superset with lateral raises if desired." },
           { id: "db-lateral-raise", names: ["DB lateral raise"], sets: 3, reps: "12-15", note: "" },
           { id: "db-curl", names: ["DB curl"], sets: 3, reps: "10-12", note: "Optional." }
@@ -717,9 +709,9 @@
         name: "Upper B",
         hint: "Pull emphasis with lighter dips.",
         exercises: [
-          { id: "weighted-neutral-pullups", names: ["Weighted Neutral Grip Pull-ups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
+          { id: "weighted-neutral-pullups", names: ["Pull-ups"], sets: 4, reps: "6-10", note: "Elbow-friendly grip." },
           { id: "row", names: ["DB row", "Sandbag row"], sets: 4, reps: "8-12", note: "Sandbag rows may need higher reps." },
-          { id: "weighted-dips-b", names: ["Weighted dips"], sets: 3, reps: "8-12", note: "Lighter than Upper A." },
+          { id: "weighted-dips-b", names: ["Dips"], sets: 3, reps: "8-12", note: "Lighter than Upper A." },
           { id: "db-overhead-press", names: ["DB overhead press"], sets: 3, reps: "8-12", note: "" },
           { id: "rear-delt", names: ["Rear delt raise", "Face pull"], sets: 3, reps: "15-20", note: "Superset with OHP if desired." }
         ]
@@ -829,15 +821,22 @@
     }
 
     function canonicalExerciseName(exercise) {
+      // Collapses the display names a movement has been logged under, so
+      // "Last comparable" and the progress table match across sessions.
+      // Sessions saved before 2026-08-31 carry "Weighted dips" and "Weighted
+      // Neutral Grip Pull-ups"; the ids never changed, so they still match.
       const id = String(exercise?.id || "").toLowerCase();
       const name = String(exercise?.name || "").toLowerCase().replaceAll("-", " ");
       if (
         id === "weighted-neutral-pullups" ||
         id === "weighted-pullups" ||
-        (name.includes("weighted") && name.includes("pullup")) ||
-        (name.includes("weighted") && name.includes("pull up"))
+        name.includes("pullup") ||
+        name.includes("pull up")
       ) {
-        return "Weighted Neutral Grip Pull-ups";
+        return "Pull-ups";
+      }
+      if (id === "weighted-dips-a" || id === "weighted-dips-b" || name.includes("dip")) {
+        return "Dips";
       }
       return exercise?.name || "Unknown exercise";
     }
@@ -884,7 +883,6 @@
       renderLog();
       renderSchedule();
       renderProgress();
-      renderBodyweightNote();
     }
 
     function renderLog() {
@@ -974,13 +972,11 @@
     function renderProgress() {
       const totalSessions = state.sessions.length;
       const totalSets = state.sessions.flatMap(s => s.exercises || []).flatMap(e => e.sets || []).filter(s => s.weight || s.reps).length;
-      const latestWeight = state.bodyweights.at(-1);
       const uniqueExercises = new Set(state.sessions.flatMap(s => (s.exercises || []).map(canonicalExerciseName))).size;
       document.getElementById("metrics").innerHTML = [
         ["Workouts", totalSessions],
         ["Logged sets", totalSets],
-        ["Exercises", uniqueExercises],
-        ["Bodyweight", latestWeight ? `${latestWeight.weight} lb` : "--"]
+        ["Exercises", uniqueExercises]
       ].map(([label, value]) => `<div class="metric"><div class="metric-value">${value}</div><div class="small">${label}</div></div>`).join("");
 
       renderProgressTable();
@@ -1089,19 +1085,10 @@
       });
     }
 
-    function renderBodyweightNote() {
-      const note = document.getElementById("bodyweightNote");
-      const weights = state.bodyweights;
-      if (weights.length < 2) {
-        note.textContent = "Target: slow upward drift, roughly 0.5 lb/week.";
-        return;
-      }
-      const first = weights[0];
-      const last = weights[weights.length - 1];
-      const days = Math.max(1, (new Date(last.date) - new Date(first.date)) / 86400000);
-      const weekly = ((Number(last.weight) - Number(first.weight)) / days) * 7;
-      note.textContent = `Trend: ${weekly >= 0 ? "+" : ""}${weekly.toFixed(2)} lb/week across saved weigh-ins.`;
-    }
+    // Bodyweight is logged in the health bot every morning, so the weigh-in
+    // field was removed rather than kept as a second place for the same number
+    // to live and diverge. state.bodyweights is retained so historical entries
+    // survive in exports and stay importable.
 
     function saveWorkout() {
       const day = activeDay();
@@ -1140,7 +1127,16 @@
       }
       saveState();
       render();
-      showToast(wasEditing ? "Workout updated." : "Workout saved. Next workout is ready.");
+
+      // Write a backup on every save. Until now the only copy of this log lived
+      // in one browser's localStorage — clearing site data, switching browsers
+      // or an iOS storage eviction would have taken three months of training
+      // with it. With Safari's downloads pointed at iCloud Drive this also
+      // delivers the file to the Mac, so the nightly importer picks it up
+      // without anyone remembering to export.
+      try { exportJson(true); } catch (err) { /* never block a save on this */ }
+
+      showToast(wasEditing ? "Workout updated." : "Workout saved and backed up.");
     }
 
     function exportCsv() {
@@ -1157,11 +1153,11 @@
       download(`workout-log-${todayIso()}.csv`, rows.map(row => row.map(csvCell).join(",")).join("\n"), "text/csv");
     }
 
-    function exportJson() {
-      download(`workout-log-${todayIso()}.json`, JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), state }, null, 2), "application/json");
+    function exportJson(quiet) {
+      download(`workout-log-${todayIso()}.json`, JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), state }, null, 2), "application/json", quiet);
     }
 
-    function download(filename, text, type) {
+    function download(filename, text, type, quiet) {
       const blob = new Blob([text], { type });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1169,7 +1165,7 @@
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-      showToast("Export ready.");
+      if (!quiet) showToast("Export ready.");
     }
 
     function csvCell(value) {
@@ -1227,23 +1223,6 @@
       saveState();
     });
 
-    document.getElementById("saveBodyweight").addEventListener("click", () => {
-      const input = document.getElementById("bodyweightInput");
-      const weight = Number(input.value);
-      if (!Number.isFinite(weight) || weight <= 0) {
-        showToast("Enter a bodyweight first.");
-        return;
-      }
-      const existing = state.bodyweights.find(item => item.date === state.activeDate);
-      if (existing) existing.weight = weight;
-      else state.bodyweights.push({ date: state.activeDate, weight });
-      state.bodyweights.sort((a, b) => a.date.localeCompare(b.date));
-      input.value = "";
-      saveState();
-      render();
-      showToast("Bodyweight saved.");
-    });
-
     document.getElementById("exportCsv").addEventListener("click", exportCsv);
     document.getElementById("exportJson").addEventListener("click", exportJson);
     document.getElementById("importJson").addEventListener("click", () => document.getElementById("importFile").click());
@@ -1267,12 +1246,24 @@
     });
 
     document.getElementById("resetData").addEventListener("click", () => {
-      confirmAction("Reset all data?", "This clears saved workouts, bodyweights, drafts, and cycle position from this browser.", () => {
-        state = { ...defaultState };
-        saveState();
-        render();
-        showToast("Data reset.");
-      });
+      // Reset is irreversible and this browser holds the only copy, so it
+      // exports first — unconditionally, before anything is cleared. A confirm
+      // dialog is not a backup.
+      confirmAction(
+        "Reset all data?",
+        `This clears ${state.sessions.length} saved workout(s), bodyweights, drafts, and cycle position from this browser. A backup file will be downloaded first.`,
+        () => {
+          try {
+            exportJson(true);
+          } catch (err) {
+            showToast("Backup failed — nothing was reset.");
+            return;                       // refuse to reset without a backup
+          }
+          state = { ...defaultState };
+          saveState();
+          render();
+          showToast("Backup downloaded, data reset.");
+        });
     });
 
     render();
