@@ -621,6 +621,7 @@
           <h3>Export</h3>
           <p class="subhead">Use CSV for quick analysis and JSON for full backup or moving to another browser.</p>
           <div class="quick-grid">
+            <button class="btn primary" id="syncNow">Sync</button>
             <button class="btn primary" id="exportCsv">CSV</button>
             <button class="btn primary" id="exportJson">JSON</button>
           </div>
@@ -1151,9 +1152,17 @@
       // with it. With Safari's downloads pointed at iCloud Drive this also
       // delivers the file to the Mac, so the nightly importer picks it up
       // without anyone remembering to export.
-      try { exportJson(true); } catch (err) { /* never block a save on this */ }
-
-      showToast(wasEditing ? "Workout updated." : "Workout saved and backed up.");
+      // Try the Mini first; fall back to a download so a save is never left
+      // without a backup. Never block the save on either.
+      showToast(wasEditing ? "Workout updated." : "Workout saved.");
+      syncToMini().then(ok => {
+        if (ok) {
+          showToast("Synced to the Mini.");
+        } else {
+          try { exportJson(true); showToast("Saved — export ready to file."); }
+          catch (err) { /* nothing more we can do */ }
+        }
+      });
     }
 
     function exportCsv() {
@@ -1168,6 +1177,40 @@
         });
       });
       download(`workout-log-${todayIso()}.csv`, rows.map(row => row.map(csvCell).join(",")).join("\n"), "text/csv");
+    }
+
+    // Sync target on John's tailnet. The URL is safe to publish: it resolves
+    // only from inside his own Tailscale network and is meaningless anywhere
+    // else. The SECRET is deliberately NOT here — this repo is public, so
+    // anything committed to it is published permanently. It is entered once and
+    // kept in localStorage instead.
+    const SYNC_URL = "https://mini.taild6c358.ts.net/workout";
+
+    function syncSecret(promptIfMissing) {
+      let key = state.syncSecret || "";
+      if (!key && promptIfMissing) {
+        key = (window.prompt("Sync key (from ~/.hermes/.env on the Mini):") || "").trim();
+        if (key) { state.syncSecret = key; saveState(); }
+      }
+      return key;
+    }
+
+    // Push straight to the Mini. Falls back to the file download, which is the
+    // only route that works off the tailnet — an iOS home-screen PWA has no
+    // download manager, so that path needs a manual Save to Files.
+    async function syncToMini() {
+      const key = syncSecret(false);
+      if (!key) return false;
+      try {
+        const res = await fetch(SYNC_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Workout-Secret": key },
+          body: JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), state })
+        });
+        return res.ok;
+      } catch (err) {
+        return false;                 // off tailnet, Mini asleep, anything
+      }
     }
 
     function exportJson(quiet) {
@@ -1238,6 +1281,11 @@
     document.getElementById("sessionNotes").addEventListener("input", e => {
       getDraft().notes = e.target.value;
       saveState();
+    });
+
+    document.getElementById("syncNow").addEventListener("click", async () => {
+      syncSecret(true);
+      showToast(await syncToMini() ? "Synced to the Mini." : "Sync failed — on the tailnet?");
     });
 
     document.getElementById("exportCsv").addEventListener("click", exportCsv);
